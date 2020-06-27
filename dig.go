@@ -467,18 +467,20 @@ type TraceResponse struct {
 	Msg      *dns.Msg
 }
 
+var nameServers [][]string
+
 //Trace  类似于 dig +trace -t msqType
-func (d *Dig) TraceForRecord(domain string, msgType uint16) ([]TraceResponse, error) {
+func (d *Dig) TraceForRecord(domain string, msgType uint16) ([]TraceResponse, [][]string, error) {
 	var responses = make([]TraceResponse, 0)
 	var servers = make([]string, 0, 13)
 	var server = randserver(roots)
 	for {
 		if err := d.SetDNS(server); err != nil {
-			return responses, err
+			return responses, nil, err
 		}
 		msg, err := d.GetMsg(msgType, domain)
 		if err != nil {
-			return responses, fmt.Errorf("%s:%v", server, err)
+			return responses,nil, fmt.Errorf("%s:%v", server, err)
 		}
 		var rsp TraceResponse
 		rsp.Server = server
@@ -488,24 +490,27 @@ func (d *Dig) TraceForRecord(domain string, msgType uint16) ([]TraceResponse, er
 		switch msg.Authoritative {
 		case false:
 			servers = servers[:0]
+			var nameServer []string
 			for _, v := range msg.Ns {
 				ns, ok := v.(*dns.NS)
 				if ok {
 					servers = append(servers, ns.Ns)
+					nameServer = append(nameServer,ns.Ns)
 				}
 			}
 			if len(servers) == 0 {
-				return responses, nil
+				return responses,nameServers, nil
 			}
+			nameServers=append(nameServers,nameServer)
 			server = randserver(servers)
 		case true:
-			return responses, nil
+			return responses,nameServers, nil
 		}
 	}
 }
 
 //Trace  类似于 dig +trace
-func (d *Dig) Trace(domain string) ([]TraceResponse, error) {
+func (d *Dig) Trace(domain string) ([]TraceResponse,[][]string, error) {
 	return d.TraceForRecord(domain, dns.TypeA)
 }
 
@@ -524,7 +529,7 @@ func randserver(servers []string) string {
 //IsPolluted  返回domain是否被污染
 func IsPolluted(domain string) (bool, error) {
 	var dig Dig
-	rsps, err := dig.Trace(domain)
+	rsps,_, err := dig.Trace(domain)
 	if err != nil {
 		return false, err
 	}
