@@ -474,7 +474,9 @@ func (d *Dig) TraceForRecord(domain string, msgType uint16) ([]TraceResponse, []
 	var responses = make([]TraceResponse, 0)
 	var servers = make([]string, 0, 13)
 	var server = randserver(roots)
-	for {
+	queryLimit:=1
+	for queryLimit < 100 {
+		queryLimit += 1
 		if err := d.SetDNS(server); err != nil {
 			return responses, nil, err
 		}
@@ -507,6 +509,7 @@ func (d *Dig) TraceForRecord(domain string, msgType uint16) ([]TraceResponse, []
 			return responses,nameServers, nil
 		}
 	}
+	return nil, nil, errors.New("Trace query excedded 100")
 }
 
 //Trace  类似于 dig +trace
