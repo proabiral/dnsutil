@@ -467,10 +467,9 @@ type TraceResponse struct {
 	Msg      *dns.Msg
 }
 
-var nameServers [][]string
-
 //Trace  类似于 dig +trace -t msqType
 func (d *Dig) TraceForRecord(domain string, msgType uint16) ([]TraceResponse, [][]string, error) {
+	var nameServers [][]string
 	var responses = make([]TraceResponse, 0)
 	var servers = make([]string, 0, 13)
 	var server = randserver(roots)
